@@ -3,38 +3,56 @@ from torch.utils.data import Dataset
 import json
 import os
 from PIL import Image
-from utils.utils import transform, show_img
+from utils.utils import transform
+from collections import defaultdict
+
+class _objects:
+    def __init__(self):
+        self.boxes = []
+        self.labels = []
 
 
 
-# allows showing images from datasets 
-setattr(Dataset, 'show_img', show_img)
-
-
-class PascalVOCDataset(Dataset):
+class MSCoCoDataset(Dataset):
     """
     A PyTorch Dataset class to be used in a PyTorch DataLoader to create batches.
     """
 
-    def __init__(self, data_folder, split, keep_difficult=False):
+    def __init__(self, data_folder: str, label_file: str, split: str):
         """
+        data_folder/
+        ....data/
+        ....labels.json
+
         :param data_folder: folder where data files are stored
         :param split: split, one of 'TRAIN' or 'TEST'
-        :param keep_difficult: keep or discard objects that are considered difficult to detect?
         """
         self.split = split.upper()
 
         assert self.split in {'TRAIN', 'TEST'}
 
         self.data_folder = data_folder
-        self.keep_difficult = keep_difficult
+        self.label_file = label_file
 
-        # Read data files
-        with open(os.path.join(data_folder, self.split + '_images.json'), 'r') as j:
-            self.images = json.load(j)
-        with open(os.path.join(data_folder, self.split + '_objects.json'), 'r') as j:
-            self.objects = json.load(j)
+        assert self.label_file.split('.')[-1] == 'json'
+        self.images = []
+        object = defaultdict(_objects)
 
+        with open(label_file, 'r') as j:
+            labels_json = json.load(j)
+
+        # read images paths
+        for img in labels_json['images']:
+            self.images.append(f'{data_folder}/data/{img["file_name"]}')
+
+        for annotation in labels_json['annotations']:
+            object[annotation['image_id']].boxes.append(annotation['bbox'])
+            object[annotation['image_id']].labels.append(annotation['category_id'])
+        self.objects = []
+        for key in object.keys():
+            self.objects.append(object[key].__dict__)
+
+        del object
         assert len(self.images) == len(self.objects)
 
     def __getitem__(self, i):
@@ -46,13 +64,8 @@ class PascalVOCDataset(Dataset):
         objects = self.objects[i]
         boxes = torch.FloatTensor(objects['boxes'])  # (n_objects, 4)
         labels = torch.LongTensor(objects['labels'])  # (n_objects)
-        difficulties = torch.ByteTensor(objects['difficulties'])  # (n_objects)
+        difficulties = torch.ByteTensor([0] * len(objects['boxes']))  # (n_objects)
 
-        # Discard difficult objects, if desired
-        if not self.keep_difficult:
-            boxes = boxes[1 - difficulties]
-            labels = labels[1 - difficulties]
-            difficulties = difficulties[1 - difficulties]
 
         # Apply transformations
         image, boxes, labels, difficulties = transform(image, boxes, labels, difficulties, split=self.split)
@@ -77,14 +90,12 @@ class PascalVOCDataset(Dataset):
         images = list()
         boxes = list()
         labels = list()
-        difficulties = list()
 
         for b in batch:
             images.append(b[0])
             boxes.append(b[1])
             labels.append(b[2])
-            difficulties.append(b[3])
 
         images = torch.stack(images, dim=0)
 
-        return images, boxes, labels, difficulties  # tensor (N, 3, 300, 300), 3 lists of N tensors each
+        return images, boxes, labels, 1 # tensor (N, 3, 300, 300), 3 lists of N tensors each

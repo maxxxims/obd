@@ -5,17 +5,45 @@ import random
 import xml.etree.ElementTree as ET
 import torchvision.transforms.functional as FT
 from config import Config
+import numpy as np
+from matplotlib import pyplot as plt
+
 
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-device = Config.device
+# class cfg:
+#     def __init__(self) -> None:
+#         with open('config.json') as f:
+#             data = json.load(f)
+#         self.label_map = data['label_map']
+#         self.voc_labels = data['voc_labels']
+#         self.rev_label_map = data['rev_label_map']
+#         self.n_classes = len(self.voc_labels)
+
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# voc_labels = ('person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat',
+#                'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat',
+#             'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'backpack',
+#             'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball', 'kite',
+#             'baseball bat', 'baseball glove', 'skateboard', 'surfboard', 'tennis racket', 'bottle', 
+#             'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange',
+#             'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed',
+#             'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 'oven',
+#              'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush')
+
+# voc_labels = ('ship')
+
+# voc_labels = ('person', 'bicycle', 'car', 'motorcycle', 'truck', 'cat', 'dog', 'handbag', 'suitcase', 'frisbee', 'bottle', 'cup', 'bowl', 'orange', 'chair', 'couch', 'potted plant', 'bed', 'dining table', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'refrigerator', 'book')
+# voc_labels, label_map, rev_label_map = Config.get_labels()
 
 # Label map
-voc_labels = ('aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable',
-              'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor')
-label_map = {k: v + 1 for v, k in enumerate(voc_labels)}
-label_map['background'] = 0
-rev_label_map = {v: k for k, v in label_map.items()}  # Inverse mapping
+# voc_labels = ('aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable',
+#               'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor')
+# label_map = {k: v + 1 for v, k in enumerate(voc_labels)}
+# label_map['background'] = 0
+# rev_label_map = {v: k for k, v in label_map.items()}  # Inverse mapping
 
 # voc_labels, label_map, rev_label_map = Config.get_labels()
 
@@ -24,10 +52,23 @@ rev_label_map = {v: k for k, v in label_map.items()}  # Inverse mapping
 distinct_colors = ['#e6194b', '#3cb44b', '#ffe119', '#0082c8', '#f58231', '#911eb4', '#46f0f0', '#f032e6',
                    '#d2f53c', '#fabebe', '#008080', '#000080', '#aa6e28', '#fffac8', '#800000', '#aaffc3', '#808000',
                    '#ffd8b1', '#e6beff', '#808080', '#FFFFFF']
-label_color_map = {k: distinct_colors[i] for i, k in enumerate(label_map.keys())}
+# label_color_map = {k: distinct_colors[i] for i, k in enumerate(label_map.keys())}
+
+
+
+def show_img(self, idx: int):
+    assert idx >= 0 and idx < len(self.images)
+    img = self[idx][0]
+    img = img.numpy()
+    img = np.moveaxis(img, -1, 0)
+    img = np.moveaxis(img, -1, 0)
+    plt.imshow(img)
+    plt.show()
+
 
 
 def parse_annotation(annotation_path):
+    cfg = Config()
     tree = ET.parse(annotation_path)
     root = tree.getroot()
 
@@ -39,7 +80,7 @@ def parse_annotation(annotation_path):
         difficult = int(object.find('difficult').text == '1')
 
         label = object.find('name').text.lower().strip()
-        if label not in label_map:
+        if label not in cfg.label_map:
             continue
 
         bbox = object.find('bndbox')
@@ -49,7 +90,7 @@ def parse_annotation(annotation_path):
         ymax = int(bbox.find('ymax').text) - 1
 
         boxes.append([xmin, ymin, xmax, ymax])
-        labels.append(label_map[label])
+        labels.append(cfg.label_map[label])
         difficulties.append(difficult)
 
     return {'boxes': boxes, 'labels': labels, 'difficulties': difficulties}
@@ -63,6 +104,7 @@ def create_data_lists(voc07_path, voc12_path, output_folder):
     :param voc12_path: path to the 'VOC2012' folder
     :param output_folder: folder where the JSONs must be saved
     """
+    cfg = Config()
     voc07_path = os.path.abspath(voc07_path)
     voc12_path = os.path.abspath(voc12_path)
 
@@ -94,7 +136,7 @@ def create_data_lists(voc07_path, voc12_path, output_folder):
     with open(os.path.join(output_folder, 'TRAIN_objects.json'), 'w') as j:
         json.dump(train_objects, j)
     with open(os.path.join(output_folder, 'label_map.json'), 'w') as j:
-        json.dump(label_map, j)  # save label map too
+        json.dump(cfg.label_map, j)  # save label map too
 
     print('\nThere are %d training images containing a total of %d objects. Files have been saved to %s.' % (
         len(train_images), n_objects, os.path.abspath(output_folder)))
@@ -162,10 +204,11 @@ def calculate_mAP(det_boxes, det_labels, det_scores, true_boxes, true_labels, tr
     :param true_difficulties: list of tensors, one tensor for each image containing actual objects' difficulty (0 or 1)
     :return: list of average precisions for all classes, mean average precision (mAP)
     """
+    cfg = Config()
     assert len(det_boxes) == len(det_labels) == len(det_scores) == len(true_boxes) == len(
         true_labels) == len(
         true_difficulties)  # these are all lists of tensors of the same length, i.e. number of images
-    n_classes = len(label_map)
+    n_classes = len(cfg.label_map)
 
     # Store all (true) objects in a single continuous tensor while keeping track of the image it is from
     true_images = list()
@@ -278,7 +321,7 @@ def calculate_mAP(det_boxes, det_labels, det_scores, true_boxes, true_labels, tr
     mean_average_precision = average_precisions.mean().item()
 
     # Keep class-wise average precisions in a dictionary
-    average_precisions = {rev_label_map[c + 1]: v for c, v in enumerate(average_precisions.tolist())}
+    average_precisions = {cfg.rev_label_map[c + 1]: v for c, v in enumerate(average_precisions.tolist())}
 
     return average_precisions, mean_average_precision
 

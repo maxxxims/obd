@@ -322,6 +322,7 @@ class PredictionConvolutions(nn.Module):
 
         return locs, classes_scores
 
+from copy import deepcopy
 
 class SSD300(nn.Module):
     """
@@ -331,7 +332,7 @@ class SSD300(nn.Module):
     def __init__(self, n_classes):
         super(SSD300, self).__init__()
 
-        self.n_classes = n_classes
+        self.n_classes = deepcopy(n_classes)
 
         self.base = VGGBase()
         self.aux_convs = AuxiliaryConvolutions()

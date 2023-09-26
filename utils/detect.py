@@ -1,8 +1,8 @@
 from torchvision import transforms
-from utils.utils import *
+# from utils.utils import *
 from PIL import Image, ImageDraw, ImageFont
 import torch
-
+from config import Config
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -62,9 +62,9 @@ def detect(model: torch.nn.Module,
     original_dims = torch.FloatTensor(
         [original_image.width, original_image.height, original_image.width, original_image.height]).unsqueeze(0)
     det_boxes = det_boxes * original_dims
-
+    cfg = Config()
     # Decode class integer labels
-    det_labels = [rev_label_map[l] for l in det_labels[0].to('cpu').tolist()]
+    det_labels = [cfg.rev_label_map[l] for l in det_labels[0].to('cpu').tolist()]
 
     # If no objects found, the detected labels will be set to ['0.'], i.e. ['background'] in SSD300.detect_objects() in model.py
     if det_labels == ['background']:
@@ -84,9 +84,8 @@ def detect(model: torch.nn.Module,
 
         # Boxes
         box_location = det_boxes[i].tolist()
-        draw.rectangle(xy=box_location, outline=label_color_map[det_labels[i]])
-        draw.rectangle(xy=[l + 1. for l in box_location], outline=label_color_map[
-            det_labels[i]])  # a second rectangle at an offset of 1 pixel to increase line thickness
+        draw.rectangle(xy=box_location)##, outline=label_color_map[det_labels[i]])
+        draw.rectangle(xy=[l + 1. for l in box_location]) ##, outline=label_color_map[det_labels[i]])  # a second rectangle at an offset of 1 pixel to increase line thickness
         # draw.rectangle(xy=[l + 2. for l in box_location], outline=label_color_map[
         #     det_labels[i]])  # a third rectangle at an offset of 1 pixel to increase line thickness
         # draw.rectangle(xy=[l + 3. for l in box_location], outline=label_color_map[
@@ -97,7 +96,7 @@ def detect(model: torch.nn.Module,
         text_location = [box_location[0] + 2., box_location[1] - text_size[1]]
         textbox_location = [box_location[0], box_location[1] - text_size[1], box_location[0] + text_size[0] + 4.,
                             box_location[1]]
-        draw.rectangle(xy=textbox_location, fill=label_color_map[det_labels[i]])
+        draw.rectangle(xy=textbox_location), ##fill=label_color_map[det_labels[i]])
         draw.text(xy=text_location, text=det_labels[i].upper(), fill='white',
                   font=font)
     del draw

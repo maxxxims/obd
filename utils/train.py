@@ -14,9 +14,11 @@ keep_difficult = True  # use objects considered difficult to detect?
 
 # Model parameters
 # Not too many here since the SSD300 has a very specific structure
-n_classes = len(label_map)  # number of different types of objects
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# n_classes = len(label_map)  # number of different types of objects
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+# n_classes = Config.n_classes
+# device = Config.device
 # n_classes = Config.n_classes
 # device = Config.device
 
@@ -77,7 +79,7 @@ def train_model(train_dataset: torch.utils.data.Dataset,
                                                pin_memory=True)  # note that we're passing the collate function here
     # print('3')
     # epochs = iterations // (len(train_dataset) // 32)
-    decay_lr_at = [it // (len(train_dataset) // 32) for it in decay_lr_at]
+    decay_lr_at = [it // max(1, len(train_dataset) // 32) for it in decay_lr_at]
 
     for epoch in range(start_epoch, epochs):
         print(f'ep = {epoch}')
@@ -155,7 +157,7 @@ def main(checkpoint = None, data_folder = None,
     # To convert iterations to epochs, divide iterations by the number of iterations per epoch
     # The paper trains for 120,000 iterations with a batch size of 32, decays after 80,000 and 100,000 iterations
     epochs = iterations // (len(train_dataset) // 32)
-    decay_lr_at = [it // (len(train_dataset) // 32) for it in decay_lr_at]
+    decay_lr_at = [it // max(1, len(train_dataset) // 32) for it in decay_lr_at]
 
     # Epochs
     for epoch in range(start_epoch, epochs):
