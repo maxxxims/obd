@@ -1,0 +1,15 @@
+.env
+*.jpg
+*.jpeg
+*.png
+*.pth
+*.tar
+*.json
+*.xml
+*.txt
+
+.idea/
+.ipynb_checkpoints/
+__pycache__/
+#file with trained models
+_models/
