@@ -4,7 +4,7 @@ import torch.optim
 import torch.utils.data
 from model.model import SSD300, MultiBoxLoss
 from datasets.datasets import PascalVOCDataset
-from utils.utils import *
+from tools.utils import *
 from config import Config
 
 
@@ -35,6 +35,7 @@ keep_difficult = True  # use objects considered difficult to detect?
 # weight_decay = 5e-4  # weight decay
 # grad_clip = None  # clip if gradients are exploding, which may happen at larger batch sizes (sometimes at 32) - you will recognize it by a sorting error in the MuliBox loss calculation
 
+# torch.optim.Adam()
 
 def get_param_dict():
     return {  
@@ -71,18 +72,14 @@ def train_model(train_dataset: torch.utils.data.Dataset,
     print(f'used device = {device}')
     # Move to default device
     model = model.to(device)
-    # print('1')
     criterion = MultiBoxLoss(priors_cxcy=model.priors_cxcy).to(device)
-    # print('2')
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
                                                collate_fn=train_dataset.collate_fn, num_workers=workers,
                                                pin_memory=True)  # note that we're passing the collate function here
-    # print('3')
     # epochs = iterations // (len(train_dataset) // 32)
     decay_lr_at = [it // max(1, len(train_dataset) // 32) for it in decay_lr_at]
 
     for epoch in range(start_epoch, epochs):
-        print(f'ep = {epoch}')
         # Decay learning rate at particular epochs
         if epoch in decay_lr_at:
             adjust_learning_rate(optimizer, decay_lr_to)
@@ -97,7 +94,8 @@ def train_model(train_dataset: torch.utils.data.Dataset,
     # Save checkpoint
 
         if isinstance(save_per_step, int):
-            save_checkpoint(epoch, model, optimizer)
+            if epoch % save_per_step == 0:
+                save_checkpoint(epoch, model, optimizer)
     
     if save_model_at_end:
         save_checkpoint(epoch, model, optimizer)
